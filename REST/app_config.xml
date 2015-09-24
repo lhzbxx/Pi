@@ -1,5 +1,7 @@
 <uwsgi>
 
+     <pythonpath>/root/Pi/REST</pythonpath>
+
      <module>app</module>
 
      <callable>app</callable>
