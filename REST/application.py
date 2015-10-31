@@ -13,65 +13,13 @@ from flask import *
 import sqlite3
 import os
 import time
+import uuid
 
 app = Flask(__name__)
 #
 #
 #
 #########
-
-# 子系统：
-# 
-# 1. 签到。
-# --- 场景：公司内部上下班、活动清点人数。
-# --- 步骤：1. 公司建立群组。
-# 			2. 每个用户都对应着一张明确的照片。
-# 			3. 当需要签到的时候，组织人亮出一个二维码。
-# 			4. 当签到的人扫描二维码时，组织人收到推送。
-# 			5. 确定推送的图片与本人相符，点击确认，完成签到。
-# 2. 任务。
-# --- 场景：群组内部分配任务完成。
-# --- 步骤：1. 领头人创建任务，分配成员（可能多个）。
-# 			2. 用户可以查看自己的任务。
-# 			3. 完成后发送请求确认。
-# 			4. 领头人确认完毕。
-# 3. 朋友圈。
-# --- 场景：朋友圈。
-# --- 步骤：1. 发送状态。
-# 			2. 好友收到推送。
-# 			3. 评论。
-# 			4. 点赞。
-# 4. 话题。
-# --- 场景：群组人员发布讨论、同兴趣（音乐、电影、书籍、艺人、物品）人群讨论。
-# --- 步骤：1. 用户选择标签（热门标签）。
-# 			2. 系统向用户推送话题通知。
-# 			3. 用户参与讨论，评价、投票。
-# 			4. 标签推荐。
-# 			5. 评论赞同。
-# 5. 吐槽。
-# --- 场景：
-# --- 步骤：
-# 6. 微活动。
-# --- 场景：
-# --- 步骤：
-# 7. 多人创作。
-# --- 场景：
-# --- 步骤：
-# 8. 电竞赛事文字直播。
-# --- 场景：
-# --- 步骤：
-# 9. 日报。
-# --- 场景：
-# --- 步骤：
-# 10. 公众号。
-# --- 场景：
-# --- 步骤：
-# 11. 卡券发放系统。
-# --- 场景：
-# --- 步骤：
-# 12. 微博平台。
-# --- 场景：
-# --- 步骤：
 
 #########
 #
@@ -98,22 +46,70 @@ def WW_upload():
         file = request.files['file']
         file.save(os.path.join("img", file.filename))
         return "success"
-@app.route('/test/WorkWatcher/get_clock', methods=['GET', 'POST'])
-def WW_clock():
-	return "1"
 #
 #
 #
 #########
-#
+
 #########
 #
-# 1. 签到系统
+# 前端页面
 # 
 #########
-@app.route('/checkin/api/buildgroup')
-def checkin_buildgroup():
-	return "Hello, World!"
+@app.route('/')
+def index_page():
+	return render_template("index.html")
+@app.route('/search')
+def search_page():
+	return render_template("list.html")
+@app.route('/detail')
+def detail_page():
+	return render_template("detail.html")
+@app.route('/success')
+def success_page():
+	return render_template("success.html")
+@app.route('/order')
+def order_page():
+	if session.get('user'):
+		return render_template("order.html")
+	else:
+		return redirect(url_for('login_page'))
+@app.route('/pay')
+def pay_page():
+	if session.get('user'):
+		return render_template("pay.html")
+	else:
+		return redirect(url_for('login_page'))
+@app.route('/login')
+def login_page():
+	session['user'] = "login"
+	return render_template("login.html")
+#
+#
+#
+#########
+
+#########
+#
+# 后台函数
+# 
+#########
+@app.route('/login-back')
+def login():
+	# 登录成功。
+	return jsonify({"data": 100})
+	# 用户名不存在。
+	return jsonify({"data": 101})
+	# 密码错误。
+	return jsonify({"data": 102})
+@app.route('/register-back')
+def register():
+	# 注册成功。
+	return jsonify({"data": 100})
+	# 用户名已存在。
+	return jsonify({"data": 101})
+	# 验证码错误。
+	return jsonify({"data": 102})
 #
 #
 #
@@ -124,6 +120,29 @@ def checkin_buildgroup():
 # 基础组件&函数
 # 
 #########
+app.config.update(dict(
+	DATABASE=os.path.join(app.root_path, 'db/main.db'),
+	DEBUG=True,
+	# 生成秘钥
+	SECRET_KEY=os.urandom(24),
+	USERNAME='admin',
+	PASSWORD='default'
+))
+def connect_db():
+	return sqlite3.connect(app.config['DATABASE'])
+@app.before_request
+def before_request():
+	g.db = connect_db()
+@app.teardown_request
+def teardown_request(exception):
+	g.db.close()
+# 简化sqlite3的查询方式。
+def query_db(query, args=(), one=False):
+	cur = g.db.execute(query, args)
+	rv = [dict((cur.description[idx][0], value) for idx, value in enumerate(row)) for row in cur.fetchall()]
+	return (rv[0] if rv else None) if one else rv
+
+
 if __name__ == '__main__':
 	app.run(debug = True)
 #
